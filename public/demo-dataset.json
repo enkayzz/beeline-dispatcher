@@ -1,0 +1,297 @@
+{
+  "name": "Москва · Юго-восток",
+  "date": "2026-08-17",
+  "engineers": [
+    {
+      "id": "e1",
+      "name": "Алексей Морозов",
+      "role": "Универсальный инженер",
+      "color": "#6665df",
+      "start": [
+        55.739,
+        37.684
+      ],
+      "shift": [
+        "09:00",
+        "18:00"
+      ],
+      "skills": [
+        "local",
+        "connection",
+        "emergency"
+      ],
+      "transport": "car"
+    },
+    {
+      "id": "e2",
+      "name": "Мария Волкова",
+      "role": "Подключение и аварии",
+      "color": "#109786",
+      "start": [
+        55.698,
+        37.753
+      ],
+      "shift": [
+        "09:00",
+        "18:00"
+      ],
+      "skills": [
+        "connection",
+        "emergency"
+      ],
+      "transport": "car"
+    },
+    {
+      "id": "e3",
+      "name": "Денис Соколов",
+      "role": "Локальные работы",
+      "color": "#e58b43",
+      "start": [
+        55.734,
+        37.67
+      ],
+      "shift": [
+        "09:00",
+        "18:00"
+      ],
+      "skills": [
+        "local"
+      ],
+      "transport": "walk"
+    },
+    {
+      "id": "e4",
+      "name": "Анна Белова",
+      "role": "Подключение",
+      "color": "#478fca",
+      "start": [
+        55.715,
+        37.79
+      ],
+      "shift": [
+        "09:00",
+        "18:00"
+      ],
+      "skills": [
+        "connection"
+      ],
+      "transport": "bike"
+    },
+    {
+      "id": "e5",
+      "name": "Илья Ким",
+      "role": "Локальные работы и подключение",
+      "color": "#b366b6",
+      "start": [
+        55.67,
+        37.745
+      ],
+      "shift": [
+        "09:00",
+        "18:00"
+      ],
+      "skills": [
+        "local",
+        "connection"
+      ],
+      "transport": "transit"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "74198",
+      "title": "Подключить интернет",
+      "address": "Волгоградский проспект, 80",
+      "point": [
+        55.704,
+        37.779
+      ],
+      "skill": "connection",
+      "window": [
+        "09:00",
+        "11:00"
+      ],
+      "duration": 45,
+      "priority": "normal"
+    },
+    {
+      "id": "32840",
+      "title": "Настроить оборудование",
+      "address": "3-й Павелецкий проезд, 9",
+      "point": [
+        55.712,
+        37.645
+      ],
+      "skill": "local",
+      "window": [
+        "09:00",
+        "12:00"
+      ],
+      "duration": 30,
+      "priority": "normal"
+    },
+    {
+      "id": "67472",
+      "title": "Восстановить соединение",
+      "address": "Люблинская улица, 165",
+      "point": [
+        55.657,
+        37.749
+      ],
+      "skill": "emergency",
+      "window": [
+        "10:00",
+        "13:00"
+      ],
+      "duration": 60,
+      "transport": "car",
+      "priority": "normal"
+    },
+    {
+      "id": "74199",
+      "title": "Подключить офис",
+      "address": "Нижегородская улица, 32",
+      "point": [
+        55.732,
+        37.694
+      ],
+      "skill": "connection",
+      "window": [
+        "09:30",
+        "12:00"
+      ],
+      "duration": 45,
+      "priority": "normal"
+    },
+    {
+      "id": "32841",
+      "title": "Заменить роутер",
+      "address": "улица Мельникова, 3",
+      "point": [
+        55.726,
+        37.67
+      ],
+      "skill": "local",
+      "window": [
+        "11:00",
+        "14:00"
+      ],
+      "duration": 30,
+      "priority": "normal"
+    },
+    {
+      "id": "67473",
+      "title": "Подключить интернет",
+      "address": "Совхозная улица, 39",
+      "point": [
+        55.676,
+        37.758
+      ],
+      "skill": "connection",
+      "window": [
+        "11:00",
+        "14:00"
+      ],
+      "duration": 45,
+      "priority": "normal"
+    },
+    {
+      "id": "74200",
+      "title": "Проверить линию",
+      "address": "Рязанский проспект, 46",
+      "point": [
+        55.717,
+        37.79
+      ],
+      "skill": "emergency",
+      "window": [
+        "12:00",
+        "15:00"
+      ],
+      "duration": 60,
+      "transport": "car",
+      "priority": "normal"
+    },
+    {
+      "id": "32842",
+      "title": "Настроить Wi-Fi",
+      "address": "Дубровская улица, 13",
+      "point": [
+        55.719,
+        37.68
+      ],
+      "skill": "local",
+      "window": [
+        "13:00",
+        "16:00"
+      ],
+      "duration": 30,
+      "priority": "normal"
+    },
+    {
+      "id": "67474",
+      "title": "Подключить оборудование",
+      "address": "улица Перерва, 43",
+      "point": [
+        55.659,
+        37.762
+      ],
+      "skill": "connection",
+      "window": [
+        "14:00",
+        "17:00"
+      ],
+      "duration": 45,
+      "priority": "normal"
+    },
+    {
+      "id": "74201",
+      "title": "Подключить интернет",
+      "address": "Ташкентская улица, 15",
+      "point": [
+        55.704,
+        37.813
+      ],
+      "skill": "connection",
+      "window": [
+        "14:00",
+        "17:00"
+      ],
+      "duration": 45,
+      "priority": "normal"
+    },
+    {
+      "id": "32843",
+      "title": "Проверить оборудование",
+      "address": "Талалихина, 41",
+      "point": [
+        55.722,
+        37.692
+      ],
+      "skill": "local",
+      "window": [
+        "15:00",
+        "17:00"
+      ],
+      "duration": 30,
+      "priority": "normal"
+    },
+    {
+      "id": "74202",
+      "title": "Диагностика в велозоне",
+      "address": "Кузьминский парк",
+      "point": [
+        55.69,
+        37.799
+      ],
+      "skill": "emergency",
+      "window": [
+        "10:00",
+        "16:00"
+      ],
+      "duration": 45,
+      "transport": "bike",
+      "priority": "normal"
+    }
+  ]
+}
