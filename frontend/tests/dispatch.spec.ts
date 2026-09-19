@@ -82,9 +82,15 @@ test("import rejects malformed data and duplicate IDs", () => {
   expect(() => parseDataset(JSON.stringify(bad))).toThrow("Заявка 1");
 });
 
+test("published import example is available after production build", async ({ request }) => {
+  const response = await request.get("/demo-dataset.json");
+  expect(response.ok()).toBeTruthy();
+  expect(parseDataset(await response.text()).jobs.length).toBeGreaterThan(0);
+});
+
 test("dispatcher journey: plan, reason, timeline, urgent event, compare, export, import", async ({
   page,
-}) => {
+}, testInfo) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
@@ -99,7 +105,7 @@ test("dispatcher journey: plan, reason, timeline, urgent event, compare, export,
     page.getByRole("button", { name: "Событие дня", exact: true }),
   ).toBeEnabled();
   await expect(page.getByText("План готов.", { exact: false })).toBeVisible();
-  await page.screenshot({ path: "docs/preview-desktop.png", fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("preview-desktop.png"), fullPage: true });
   await page.getByRole("button", { name: /№ 74202.*Диагностика/ }).click();
   await expect(
     page.getByRole("heading", { name: "Почему не назначена?" }),
@@ -137,7 +143,7 @@ test("dispatcher journey: plan, reason, timeline, urgent event, compare, export,
     page.getByRole("button", { name: "№ SOS-01", exact: true }),
   ).toBeVisible();
   await page.screenshot({
-    path: "docs/preview-comparison.png",
+    path: testInfo.outputPath("preview-comparison.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Рабочий день", exact: true }).click();
@@ -173,7 +179,7 @@ test("dispatcher journey: plan, reason, timeline, urgent event, compare, export,
   expect(errors).toEqual([]);
 });
 
-test("mobile navigation and search empty state", async ({ page }) => {
+test("mobile navigation and search empty state", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page
@@ -181,7 +187,7 @@ test("mobile navigation and search empty state", async ({ page }) => {
     .first()
     .click();
   await expect(page.getByText("План готов.", { exact: false })).toBeVisible();
-  await page.screenshot({ path: "docs/preview-mobile.png", fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("preview-mobile.png"), fullPage: true });
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
