@@ -30,14 +30,14 @@ export function parseDataset(text: string): Dataset {
     new Date(data.date).toISOString().slice(0, 10) !== data.date
   )
     fail("Укажите name и действительную date в формате YYYY-MM-DD.");
-  if (!Array.isArray(data.jobs) || !data.jobs.length || data.jobs.length > 100)
-    fail("Нужен массив jobs: от 1 до 100 заявок.");
+  if (!Array.isArray(data.jobs) || data.jobs.length > 100)
+    fail("Нужен массив jobs: до 100 заявок, пустой день допустим.");
   if (
     !Array.isArray(data.engineers) ||
     !data.engineers.length ||
     data.engineers.length > 30
   )
-    fail("Нужен массив engineers: от 1 до 30 инженеров.");
+    fail("Нужен массив engineers: от 1 до 30 специалистов поддержки.");
   for (const [i, j] of data.jobs.entries()) {
     if (
       !obj(j) ||
@@ -71,9 +71,9 @@ export function parseDataset(text: string): Dataset {
       !transports.includes(e.transport)
     )
       fail(
-        `Инженер ${i + 1}: проверьте ID, имя, стартовую точку, смену, навыки и транспорт.`,
+        `Специалист поддержки ${i + 1}: проверьте ID, имя, стартовую точку, смену, навыки и транспорт.`,
       );
-    e.role = typeof e.role === "string" ? e.role : "Выездной инженер";
+    e.role = typeof e.role === "string" ? e.role : "Специалист выездной поддержки";
     e.color =
       typeof e.color === "string" && /^#[0-9a-f]{6}$/i.test(e.color)
         ? e.color

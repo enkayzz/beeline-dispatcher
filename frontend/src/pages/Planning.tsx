@@ -52,7 +52,7 @@ export default function Planning({
           value={`${plan?.metrics.assigned ?? 0} / ${w.data.jobs.filter((j) => w.tickets[j.id].status !== "cancelled").length}`}
         />
         <Metric
-          label="Инженеров на маршруте"
+          label="Специалистов на маршруте"
           value={plan?.metrics.engineers ?? "—"}
         />
         <Metric
@@ -70,7 +70,7 @@ export default function Planning({
           <div>
             <strong>Требуют внимания: {plan.unassigned.length}</strong>
             <p>
-              Исправьте условия в карточке заявки, затем назначьте инженера.
+              Исправьте условия в карточке заявки, затем назначьте специалиста поддержки.
               Остальное расписание пересчитается.
             </p>
             <div className="actions">
@@ -107,7 +107,7 @@ export default function Planning({
             value={engineer}
             onChange={(e) => setEngineer(e.target.value)}
           >
-            <option value="">Все инженеры</option>
+            <option value="">Все специалисты поддержки</option>
             {w.data.engineers.map((e) => (
               <option value={e.id} key={e.id}>
                 {e.name}

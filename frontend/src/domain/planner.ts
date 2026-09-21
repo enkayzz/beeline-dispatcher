@@ -2,6 +2,7 @@ import type { Engineer, Job, Plan, Route, Stop } from "../types";
 import { clock, distance, minutes } from "../api";
 import {
   assignmentFor,
+  engineerSettingsFor,
   locked,
   type Assignment,
   type Workspace,
@@ -71,6 +72,13 @@ export function solve(
   ): Stop[] | undefined {
     if (!compatible(e, j) || resources.get(e.id)! < w.tickets[j.id].routers)
       return;
+    const unavailable = engineerSettingsFor(w, e.id).unavailable
+      .filter((period) => period.date === data.date)
+      .map((period) => ({
+        from: minutes(period.from),
+        to: minutes(period.to),
+      }))
+      .sort((a, b) => a.from - b.from);
     const earliest = Math.max(
       minutes(j.window[0]),
       minutes(w.tickets[j.id].receivedAt),
@@ -85,13 +93,22 @@ export function solve(
         previous ? jobs.get(previous.jobId)!.point : e.start,
         j.point,
       );
-      const arrival =
-        Math.max(
+      let departure = Math.max(
           previous?.end ?? minutes(e.shift[0]),
           minutes(w.tickets[j.id].receivedAt),
-        ) + segment.travel;
-      const start = exact ?? Math.max(arrival, earliest);
-      const end = start + j.duration;
+        ),
+        arrival = departure + segment.travel,
+        start = exact ?? Math.max(arrival, earliest),
+        end = start + j.duration;
+      for (const period of unavailable) {
+        const conflicts = departure < period.to && end > period.from;
+        if (!conflicts) continue;
+        if (exact !== undefined) return;
+        departure = Math.max(departure, period.to);
+        arrival = departure + segment.travel;
+        start = Math.max(arrival, earliest);
+        end = start + j.duration;
+      }
       if (
         start < arrival ||
         start < earliest ||
@@ -135,13 +152,13 @@ export function solve(
     }
     const e = data.engineers.find((e) => e.id === assignment.engineerId);
     const route = routes.find((r) => r.engineerId === e?.id);
-    if (!e || !route) throw new Error("Инженер не найден.");
+    if (!e || !route) throw new Error("Специалист поддержки не найден.");
     if (!compatible(e, j))
       throw new Error(
-        `Заявка № ${id}: у инженера нет нужного навыка или транспорта.`,
+        `Заявка № ${id}: у специалиста поддержки нет нужного навыка или транспорта.`,
       );
     if (resources.get(e.id)! < w.tickets[id].routers)
-      throw new Error(`Заявка № ${id}: недостаточно роутеров у инженера.`);
+      throw new Error(`Заявка № ${id}: у специалиста поддержки недостаточно роутеров.`);
     const placed = place(e, route, j, minutes(assignment.start));
     if (!placed)
       throw new Error(
@@ -197,12 +214,12 @@ export function solve(
       reasons.push({
         jobId: j.id,
         reason: !skilled.length
-          ? "Нет инженера с нужным навыком."
+          ? "Нет специалиста поддержки с нужным навыком."
           : !allowed.length
-            ? "У подходящих инженеров нет требуемого транспорта."
+            ? "У подходящих специалистов поддержки нет требуемого транспорта."
             : !equipped.length
               ? "Недостаточно оборудования. Скорректируйте запас бригады или требование заявки."
-              : "Не найден свободный интервал с учётом дороги, окна, смены и фиксированных назначений.",
+              : "Не найден свободный интервал с учётом дороги, окна, графика доступности, смены и фиксированных назначений.",
       });
     }
   }

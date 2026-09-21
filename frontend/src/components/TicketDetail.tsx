@@ -18,6 +18,7 @@ export default function TicketDetail({
   w,
   id,
   role,
+  currentEngineerId,
   onClose,
   onEdit,
   onAssign,
@@ -27,6 +28,7 @@ export default function TicketDetail({
   w: Workspace;
   id: string;
   role: Role;
+  currentEngineerId?: string;
   onClose: () => void;
   onEdit: () => void;
   onAssign: (a: Assignment) => void;
@@ -35,7 +37,9 @@ export default function TicketDetail({
 }) {
   const j = w.data.jobs.find((j) => j.id === id)!,
     info = w.tickets[id],
-    a = assignmentFor(w.current, id),
+    a =
+      assignmentFor(w.current, id) ??
+      (info.status === "cancelled" ? info.lastAssignment : undefined),
     status = ticketStatus(w, j),
     isLocked = locked(status);
   const [engineer, setEngineer] = useState(
@@ -46,7 +50,13 @@ export default function TicketDetail({
   const [progress, setProgress] = useState(info.progress);
   const [note, setNote] = useState(info.note),
     [error, setError] = useState("");
-  const canUpdate = role === "dispatcher" || info.owner === "support-1";
+  const canEditTicket =
+    role === "dispatcher" || (role === "support" && info.owner === "support-1");
+  const canUpdate =
+    role === "dispatcher" ||
+    (role === "support" &&
+      ((!!a && a.engineerId === currentEngineerId) ||
+        (!a && info.owner === "support-1")));
   const reason = w.current?.unassigned.find((u) => u.jobId === id)?.reason;
   function perform(fn: () => void) {
     setError("");
@@ -77,7 +87,7 @@ export default function TicketDetail({
         <div className="banner warning">
           <strong>Требует внимания</strong>
           <p>{reason}</p>
-          {canUpdate && (
+          {canEditTicket && (
             <button onClick={onEdit}>
               <Pencil size={14} />
               Исправить условия заявки
@@ -154,8 +164,8 @@ export default function TicketDetail({
             )}
           </div>
           <p className="muted">
-            Укажите инженера и начало. Остальные заявки будут пересчитаны с
-            учётом дороги и ограничений.
+            Укажите специалиста поддержки и начало. Остальные заявки будут
+            пересчитаны с учётом дороги и ограничений.
           </p>
           <div className="form-grid">
             <label>
@@ -201,12 +211,17 @@ export default function TicketDetail({
           </div>
         </section>
       )}
+      {canEditTicket && !canUpdate && !isLocked && status !== "cancelled" && (
+        <button onClick={onEdit}>
+          <Pencil size={15} /> Редактировать заявку
+        </button>
+      )}
       {canUpdate && (
         <section className="detail-section">
           <h3>Статус и выполнение</h3>
           <p className="muted">
             {role === "support"
-              ? "Обновляйте по информации от инженера. Завершение подтверждает диспетчер."
+              ? "Отмечайте выезд и выполнение назначенных работ. Финальное закрытие подтверждает диспетчер."
               : "Подтверждайте фактическое состояние по информации от бригады."}
           </p>
           <div className="form-grid">
@@ -234,7 +249,11 @@ export default function TicketDetail({
                     )}
                   </>
                 )}
-                <option value="cancelled">Отменена</option>
+                {(role === "dispatcher" ||
+                  info.owner === "support-1" ||
+                  status === "cancelled") && (
+                  <option value="cancelled">Отменена</option>
+                )}
                 {status === "completed" && role !== "dispatcher" && (
                   <option value="completed">Завершена</option>
                 )}
@@ -282,7 +301,7 @@ export default function TicketDetail({
               <CheckCircle2 size={16} />
               Сохранить статус
             </button>
-            {!isLocked && status !== "cancelled" && (
+            {canEditTicket && !isLocked && status !== "cancelled" && (
               <button onClick={onEdit}>
                 <Pencil size={15} />
                 Редактировать заявку

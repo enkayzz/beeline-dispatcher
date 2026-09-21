@@ -93,7 +93,24 @@ export default function JobEditor({
             {error}
           </div>
         )}
+        <div className="form-steps" aria-label="Этапы заполнения заявки">
+          <span><b>1</b> Что случилось</span>
+          <i />
+          <span><b>2</b> Где и когда</span>
+          <i />
+          <span><b>3</b> Что потребуется</span>
+        </div>
+        {job && (
+          <div className="banner neutral edit-impact">
+            Изменения условий автоматически пересчитают только будущие работы.
+            Начатые и завершённые заявки останутся зафиксированы.
+          </div>
+        )}
         <div className="form-grid">
+          <div className="form-section-title span-2">
+            <b>1. Работа</b>
+            <span>Название и тип определяют необходимый навык и норматив времени.</span>
+          </div>
           <label className="span-2">
             Название заявки
             <input
@@ -126,6 +143,10 @@ export default function JobEditor({
               defaultValue={old?.receivedAt ?? "09:00"}
             />
           </label>
+          <div className="form-section-title span-2">
+            <b>2. Адрес и время клиента</b>
+            <span>Работа должна начаться внутри указанного окна.</span>
+          </div>
           <label className="span-2">
             Адрес
             <input
@@ -154,6 +175,10 @@ export default function JobEditor({
               required
             />
           </label>
+          <div className="form-section-title span-2">
+            <b>3. Контакт и ресурсы</b>
+            <span>Транспорт ограничивает выбор исполнителя; оставьте «любой», если требования нет.</span>
+          </div>
           <label>
             Контакт клиента
             <input

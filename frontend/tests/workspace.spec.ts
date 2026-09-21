@@ -120,6 +120,25 @@ test("emergency wins contested capacity over connection; receipt time prevents e
   const late = solve(w);
   expect(late.unassigned.some((u) => u.jobId === "emergency")).toBe(true);
 });
+test("support specialist unavailability is treated as a hard planning constraint", () => {
+  const w = createWorkspace();
+  for (const engineer of w.data.engineers) {
+    w.engineerSettings[engineer.id].unavailable = [
+      {
+        id: `lunch-${engineer.id}`,
+        date: w.data.date,
+        from: "12:00",
+        to: "13:00",
+        note: "Недоступен",
+      },
+    ];
+  }
+  const plan = solve(w);
+  valid(w, plan);
+  for (const stop of plan.routes.flatMap((route) => route.stops)) {
+    expect(stop.end <= 720 || stop.arrival >= 780).toBe(true);
+  }
+});
 test("support intake, dispatcher planning, manual correction, progress and persistence", async ({
   page,
 }, testInfo) => {
@@ -129,6 +148,22 @@ test("support intake, dispatcher planning, manual correction, progress and persi
   await expect(
     page.getByRole("heading", { name: "Заявки", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Рабочее место" }).locator("option"),
+  ).toHaveCount(2);
+  await expect(
+    page.getByRole("button", { name: "Моё расписание", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Моё расписание", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Моё расписание", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Анна Белова" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /^Мои заявки/ }).click();
   await expect(
     page.getByRole("button", { name: "Маршруты и расписание", exact: true }),
   ).toHaveCount(0);
@@ -179,6 +214,16 @@ test("support intake, dispatcher planning, manual correction, progress and persi
     page.getByText("Назначение сохранено.", { exact: false }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await page.getByRole("button", { name: /^Заявки \d/ }).click();
+  await page
+    .getByRole("textbox", { name: "Поиск заявок" })
+    .fill("Тестовое подключение");
+  await page.getByRole("button", { name: /Открыть заявку REQ-/ }).click();
+  await page.getByLabel("Исполнитель", { exact: true }).selectOption("e4");
+  await page.getByLabel("Начало работы", { exact: true }).fill("14:00");
+  await page.getByRole("button", { name: "Назначить и пересчитать" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
   await page
     .getByRole("button", { name: "Эффективность", exact: true })
     .click();
@@ -197,9 +242,7 @@ test("support intake, dispatcher planning, manual correction, progress and persi
   await page
     .getByRole("textbox", { name: "Поиск заявок" })
     .fill("Тестовое подключение");
-  await page
-    .getByRole("button", { name: /№ REQ-.*Тестовое подключение/ })
-    .click();
+  await page.getByRole("button", { name: /Открыть заявку REQ-/ }).click();
   await page
     .getByLabel("Выполнение заявки", { exact: true })
     .selectOption("50");
@@ -228,9 +271,7 @@ test("support intake, dispatcher planning, manual correction, progress and persi
   await page
     .getByRole("textbox", { name: "Поиск заявок" })
     .fill("Тестовое подключение");
-  await page
-    .getByRole("button", { name: /№ REQ-.*Тестовое подключение/ })
-    .click();
+  await page.getByRole("button", { name: /Открыть заявку REQ-/ }).click();
   await page
     .getByRole("combobox", { name: "Статус заявки", exact: true })
     .selectOption("completed");
@@ -248,6 +289,7 @@ test("Polaris desktop and mobile requests, filters, empty state and keyboard mod
   page,
 }, testInfo) => {
   await page.goto("/");
+  await page.getByLabel("Владелец заявок").selectOption("created");
   await page.screenshot({
     path: testInfo.outputPath("requests-desktop.png"),
     fullPage: true,
@@ -256,7 +298,7 @@ test("Polaris desktop and mobile requests, filters, empty state and keyboard mod
   await page
     .getByRole("combobox", { name: "Тип работ", exact: true })
     .selectOption("emergency");
-  await expect(page.locator("tbody tr")).toHaveCount(2);
+  await expect(page.locator(".kanban-card")).toHaveCount(2);
   await page.getByRole("button", { name: "Сбросить", exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
@@ -310,25 +352,21 @@ test("support ownership, rejected manual edits and import confirmation", async (
     page.getByRole("dialog").getByText("Ручное назначение", { exact: true }),
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Закрыть", exact: true }).click();
-  await page
-    .getByLabel("Загрузить JSON")
-    .setInputFiles({
-      name: "bad.json",
-      mimeType: "application/json",
-      buffer: Buffer.from("{"),
-    });
+  await page.getByLabel("Загрузить JSON").setInputFiles({
+    name: "bad.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{"),
+  });
   await expect(page.getByRole("alert")).toContainText(
     "Не удалось прочитать JSON",
   );
   const data = createWorkspace().data;
   data.name = "Импортированный участок";
-  await page
-    .getByLabel("Загрузить JSON")
-    .setInputFiles({
-      name: "new.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(data)),
-    });
+  await page.getByLabel("Загрузить JSON").setInputFiles({
+    name: "new.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(data)),
+  });
   await expect(page.getByRole("dialog")).toContainText("Заменить данные");
   await page.getByRole("button", { name: "Отмена", exact: true }).click();
   await expect(page.getByText("Импортированный участок")).toHaveCount(0);

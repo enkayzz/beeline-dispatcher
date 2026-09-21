@@ -3,21 +3,51 @@ import {
   Search,
   SlidersHorizontal,
   Plus,
-  ArrowUpRight,
   ClipboardList,
+  Clock3,
+  MapPin,
+  UserRound,
 } from "lucide-react";
-import { skillNames } from "../types";
 import {
-  ticketStatus,
-  workNames,
+  assignmentFor,
   ownerNames,
   statusNames,
+  ticketStatus,
+  workNames,
+  personalJobs,
   type Role,
   type Workspace,
 } from "../domain/workspace";
 import { Badge, Empty, Metric } from "../components/ui";
-import { assignmentFor } from "../domain/workspace";
 import { clock } from "../api";
+
+type Stage = "attention" | "waiting" | "enroute" | "working" | "closed";
+const stages: { id: Stage; title: string; hint: string }[] = [
+  {
+    id: "attention",
+    title: "Требуют внимания",
+    hint: "Нет допустимого назначения",
+  },
+  {
+    id: "waiting",
+    title: "Ожидают выезда",
+    hint: "Исполнитель и время назначены",
+  },
+  { id: "enroute", title: "В пути", hint: "Специалист поддержки выехал" },
+  { id: "working", title: "В работе", hint: "Работа начата или на проверке" },
+  { id: "closed", title: "Закрыты", hint: "Завершены или отменены" },
+];
+
+export function requestStage(w: Workspace, jobId: string): Stage {
+  const job = w.data.jobs.find((item) => item.id === jobId)!;
+  const status = ticketStatus(w, job);
+  if (status === "completed" || status === "cancelled") return "closed";
+  if (status === "in_progress" || status === "review") return "working";
+  if (status === "enroute") return "enroute";
+  if (status === "assigned") return "waiting";
+  return "attention";
+}
+
 export default function Requests({
   workspace: w,
   role,
@@ -29,34 +59,31 @@ export default function Requests({
   onSelect: (id: string) => void;
   onCreate: () => void;
 }) {
-  const [query, setQuery] = useState(""),
-    [status, setStatus] = useState(""),
-    [type, setType] = useState(""),
-    [owner, setOwner] = useState(role === "support" ? "mine" : "all"),
-    [date, setDate] = useState(w.data.date),
-    [expanded, setExpanded] = useState(false),
-    [engineer, setEngineer] = useState("");
-  const owned = w.data.jobs.filter(
-    (j) =>
-      role !== "support" ||
-      owner === "all" ||
-      w.tickets[j.id].owner === "support-1",
-  );
-  const attention = new Set(w.current?.unassigned.map((u) => u.jobId));
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("");
+  const [type, setType] = useState("");
+  const [owner, setOwner] = useState(role === "support" ? "mine" : "all");
+  const [expanded, setExpanded] = useState(false);
+  const [engineer, setEngineer] = useState("");
+  const owned =
+    role !== "support" || owner === "all"
+      ? w.data.jobs
+      : owner === "created"
+        ? w.data.jobs.filter((job) => w.tickets[job.id].owner === "support-1")
+        : personalJobs(w);
   const filtered = owned.filter(
-    (j) =>
-      date === w.data.date &&
+    (job) =>
       (!query ||
-        `${j.id} ${j.title} ${j.address} ${w.tickets[j.id].contact}`
+        `${job.id} ${job.title} ${job.address} ${w.tickets[job.id].contact}`
           .toLowerCase()
           .includes(query.toLowerCase())) &&
-      (!status ||
-        (status === "attention"
-          ? attention.has(j.id)
-          : ticketStatus(w, j) === status)) &&
-      (!type || w.tickets[j.id].workType === type) &&
-      (!engineer || assignmentFor(w.current, j.id)?.engineerId === engineer),
+      (!status || ticketStatus(w, job) === status) &&
+      (!type || w.tickets[job.id].workType === type) &&
+      (!engineer || assignmentFor(w.current, job.id)?.engineerId === engineer),
   );
+  const count = (stage: Stage) =>
+    filtered.filter((job) => requestStage(w, job.id) === stage).length;
+
   return (
     <>
       <div className="page-heading">
@@ -64,24 +91,27 @@ export default function Requests({
           <div className="eyebrow">
             {role === "support"
               ? "Рабочее место поддержки"
-              : "Рабочее место диспетчера"}
+              : "Диспетчерская доска"}
           </div>
           <h1>Заявки</h1>
-          <p>От первого обращения до выполненной работы.</p>
+          <p>
+            Карточки переходят между этапами автоматически после назначения и
+            изменения фактического статуса.
+          </p>
         </div>
         <button className="primary" onClick={onCreate}>
-          <Plus size={16} />
-          Создать заявку
+          <Plus size={16} /> Создать заявку
         </button>
       </div>
-      <section className="card day-summary">
+
+      <section className="card day-summary compact-summary">
         <div className="day-label">
           <span className="square-icon">
             <ClipboardList size={22} />
           </span>
           <div>
             <h2>
-              {new Date(w.data.date + "T12:00").toLocaleDateString("ru-RU", {
+              {new Date(`${w.data.date}T12:00`).toLocaleDateString("ru-RU", {
                 day: "numeric",
                 month: "long",
                 weekday: "long",
@@ -92,88 +122,41 @@ export default function Requests({
           <span className="badge neutral">Рабочий день</span>
         </div>
         <div className="metrics">
+          <Metric label="Заявок по фильтру" value={filtered.length} />
+          <Metric label="Требуют внимания" value={count("attention")} />
           <Metric
-            label={
-              owner === "mine" && role === "support"
-                ? "Мои заявки"
-                : "Всего заявок"
-            }
-            value={owned.length}
+            label="В пути / работе"
+            value={count("enroute") + count("working")}
           />
-          <Metric
-            label="В работе / в пути"
-            value={
-              owned.filter((j) =>
-                ["enroute", "in_progress", "review"].includes(
-                  ticketStatus(w, j),
-                ),
-              ).length
-            }
-          />
-          <Metric
-            label="Завершено"
-            value={
-              owned.filter((j) => ticketStatus(w, j) === "completed").length
-            }
-          />
-          <Metric
-            label="Требуют внимания"
-            value={owned.filter((j) => attention.has(j.id)).length}
-          />
+          <Metric label="Закрыто" value={count("closed")} />
         </div>
       </section>
-      <section className="card">
-        <div className="card-tabs">
-          <button
-            className={!status ? "selected" : ""}
-            onClick={() => setStatus("")}
-          >
-            Все заявки <span>{owned.length}</span>
-          </button>
-          <button
-            className={status === "new" ? "selected" : ""}
-            onClick={() => setStatus("new")}
-          >
-            Новые
-          </button>
-          <button
-            className={status === "attention" ? "selected" : ""}
-            onClick={() => setStatus("attention")}
-          >
-            Требуют внимания{" "}
-            <span>{owned.filter((j) => attention.has(j.id)).length}</span>
-          </button>
-          <button
-            className={status === "completed" ? "selected" : ""}
-            onClick={() => setStatus("completed")}
-          >
-            Завершённые
-          </button>
-        </div>
+
+      <section className="card request-controls">
         <div className="filterbar">
           <div className="search-field">
             <Search size={17} />
             <input
               aria-label="Поиск заявок"
-              placeholder="Поиск по номеру, адресу или клиенту"
+              placeholder="Номер, адрес, клиент или название"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(event) => setQuery(event.target.value)}
             />
           </div>
           <button
             onClick={() => setExpanded(!expanded)}
             aria-expanded={expanded}
           >
-            <SlidersHorizontal size={16} />
-            Фильтры
+            <SlidersHorizontal size={16} /> Фильтры
           </button>
           {role === "support" && (
             <select
               aria-label="Владелец заявок"
               value={owner}
-              onChange={(e) => setOwner(e.target.value)}
+              onChange={(event) => setOwner(event.target.value)}
             >
-              <option value="mine">Мои заявки</option>
+              <option value="mine">Назначенные мне</option>
+              <option value="created">Созданные мной обращения</option>
               <option value="all">Все обращения</option>
             </select>
           )}
@@ -181,49 +164,44 @@ export default function Requests({
         {expanded && (
           <div className="filter-details">
             <label>
-              Дата
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </label>
-            <label>
-              Статус
+              Фактический статус
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                onChange={(event) => setStatus(event.target.value)}
               >
                 <option value="">Все статусы</option>
-                {Object.entries(statusNames).map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
+                {Object.entries(statusNames).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
-                <option value="attention">Требуют внимания</option>
               </select>
             </label>
             <label>
               Тип работ
-              <select value={type} onChange={(e) => setType(e.target.value)}>
+              <select
+                aria-label="Тип работ"
+                value={type}
+                onChange={(event) => setType(event.target.value)}
+              >
                 <option value="">Все типы</option>
-                {Object.entries(workNames).map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
+                {Object.entries(workNames).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              Инженер
+              Специалист поддержки
               <select
                 value={engineer}
-                onChange={(e) => setEngineer(e.target.value)}
+                onChange={(event) => setEngineer(event.target.value)}
               >
-                <option value="">Все инженеры</option>
-                {w.data.engineers.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
+                <option value="">Все специалисты</option>
+                {w.data.engineers.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
                   </option>
                 ))}
               </select>
@@ -233,7 +211,6 @@ export default function Requests({
                 setQuery("");
                 setStatus("");
                 setType("");
-                setDate(w.data.date);
                 setEngineer("");
               }}
             >
@@ -241,104 +218,104 @@ export default function Requests({
             </button>
           </div>
         )}
-        {filtered.length ? (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Заявка</th>
-                  <th>Статус</th>
-                  <th>Тип и приоритет</th>
-                  <th>Окно клиента</th>
-                  <th>Инженер</th>
-                  <th>Выполнение</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((j) => {
-                  const info = w.tickets[j.id],
-                    a = assignmentFor(w.current, j.id);
-                  return (
-                    <tr key={j.id}>
-                      <td>
+      </section>
+
+      {filtered.length ? (
+        <div className="kanban" aria-label="Этапы заявок">
+          {stages.map((stage) => {
+            const jobs = filtered.filter(
+              (job) => requestStage(w, job.id) === stage.id,
+            );
+            return (
+              <section
+                className={`kanban-column stage-${stage.id}`}
+                key={stage.id}
+              >
+                <header>
+                  <div>
+                    <h2>{stage.title}</h2>
+                    <span>{jobs.length}</span>
+                  </div>
+                  <p>{stage.hint}</p>
+                </header>
+                <div className="kanban-cards">
+                  {jobs.length ? (
+                    jobs.map((job) => {
+                      const info = w.tickets[job.id];
+                      const assignment =
+                        assignmentFor(w.current, job.id) ?? info.lastAssignment;
+                      const assignedEngineer = w.data.engineers.find(
+                        (item) => item.id === assignment?.engineerId,
+                      );
+                      const reason = w.current?.unassigned.find(
+                        (item) => item.jobId === job.id,
+                      )?.reason;
+                      return (
                         <button
-                          className="text-button ticket-link"
-                          onClick={() => onSelect(j.id)}
+                          className="kanban-card"
+                          key={job.id}
+                          aria-label={`Открыть заявку ${job.id}`}
+                          onClick={() => onSelect(job.id)}
                         >
-                          <b>№ {j.id}</b>
-                          <span>{j.title}</span>
+                          <div className="kanban-card-top">
+                            <span>№ {job.id}</span>
+                            <Badge status={ticketStatus(w, job)} />
+                          </div>
+                          <h3>{job.title}</h3>
+                          <p>
+                            <MapPin size={13} /> {job.address}
+                          </p>
+                          <dl>
+                            <div>
+                              <dt>
+                                <Clock3 size={12} /> Окно
+                              </dt>
+                              <dd>{job.window.join("–")}</dd>
+                            </div>
+                            <div>
+                              <dt>
+                                <UserRound size={12} /> Исполнитель
+                              </dt>
+                              <dd>{assignedEngineer?.name ?? "Не назначен"}</dd>
+                            </div>
+                          </dl>
+                          {assignment && (
+                            <div className="card-assignment">
+                              Начало работ в {clock(assignment.stop.start)}
+                            </div>
+                          )}
+                          {reason && (
+                            <div className="card-reason">{reason}</div>
+                          )}
+                          <footer>
+                            <span>{workNames[info.workType]}</span>
+                            <span>{ownerNames[info.owner] || info.owner}</span>
+                          </footer>
                         </button>
-                        <small>{j.address}</small>
-                      </td>
-                      <td>
-                        <Badge status={ticketStatus(w, j)} />
-                        {attention.has(j.id) && (
-                          <small className="attention-text">
-                            Нужно назначить
-                          </small>
-                        )}
-                      </td>
-                      <td>
-                        {workNames[info.workType]}
-                        {info.workType === "emergency" && (
-                          <small className="critical-text">
-                            Высокий приоритет
-                          </small>
-                        )}
-                        <small title={skillNames[j.skill]}>
-                          {ownerNames[info.owner] || info.owner}
-                        </small>
-                      </td>
-                      <td className="nowrap">
-                        {j.window.join("–")}
-                        <small>
-                          {a
-                            ? `Начало ${clock(a.stop.start)}`
-                            : "Время не назначено"}
-                        </small>
-                      </td>
-                      <td>
-                        {a ? (
-                          w.data.engineers.find((e) => e.id === a.engineerId)
-                            ?.name
-                        ) : (
-                          <span className="muted">Не назначен</span>
-                        )}
-                      </td>
-                      <td>
-                        <div className="progress-cell">
-                          <progress value={info.progress} max={100} />
-                          <span>{info.progress}%</span>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="icon-button"
-                          aria-label={`Открыть заявку ${j.id}`}
-                          onClick={() => onSelect(j.id)}
-                        >
-                          <ArrowUpRight size={17} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
+                      );
+                    })
+                  ) : (
+                    <div className="kanban-empty">Нет заявок</div>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <section className="card">
           <Empty title="Заявки не найдены">
             Измените фильтры или создайте новое обращение.
           </Empty>
-        )}
-        <div className="table-footer">
-          Показано {filtered.length} из {owned.length} ·{" "}
-          {role === "support"
-            ? "Ваши обращения и статусы исполнения"
-            : "Все обращения рабочего дня"}
-        </div>
-      </section>
+        </section>
+      )}
+      <p className="kanban-footnote">
+        {role === "support" &&
+          "«Назначенные мне» — те же работы, что в личном расписании за выбранный день, включая закрытые. Счётчик меню показывает их количество без фильтров. "}
+        Этапы не перетаскиваются вручную: назначение переводит заявку в ожидание
+        выезда, поддержка отмечает путь и работу, диспетчер подтверждает
+        закрытие.
+      </p>
     </>
   );
 }
