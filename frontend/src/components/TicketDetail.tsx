@@ -12,7 +12,7 @@ import {
   type Status,
   type Workspace,
 } from "../domain/workspace";
-import { clock } from "../api";
+import { clock, minutes } from "../api";
 import { skillNames, transportNames } from "../types";
 export default function TicketDetail({
   w,
@@ -33,7 +33,7 @@ export default function TicketDetail({
   onEdit: () => void;
   onAssign: (a: Assignment) => void;
   onRelease: () => void;
-  onStatus: (status: Status, progress: number, note: string) => void;
+  onStatus: (status: Status, note: string) => void;
 }) {
   const j = w.data.jobs.find((j) => j.id === id)!,
     info = w.tickets[id],
@@ -47,7 +47,7 @@ export default function TicketDetail({
   );
   const [start, setStart] = useState(a ? clock(a.stop.start) : j.window[0]);
   const [nextStatus, setNextStatus] = useState<Status>(status);
-  const [progress, setProgress] = useState(info.progress);
+
   const [note, setNote] = useState(info.note),
     [error, setError] = useState("");
   const canEditTicket =
@@ -68,7 +68,9 @@ export default function TicketDetail({
   }
   return (
     <Modal title={`Заявка № ${id}`} wide onClose={onClose}>
-      <div className="detail-title">
+      <div
+        className={`detail-title ${info.workType === "emergency" ? "emergency-detail" : ""}`}
+      >
         <div>
           <h3>{j.title}</h3>
           <p>
@@ -126,6 +128,40 @@ export default function TicketDetail({
           </b>
         </div>
       </div>
+      <section className="assignment-dashboard" aria-label="Сводка назначения">
+        <div>
+          <small>Сейчас назначен</small>
+          <b>
+            {w.data.engineers.find((e) => e.id === a?.engineerId)?.name ??
+              "Не назначен"}
+          </b>
+          <span>
+            {a
+              ? `${clock(a.stop.start)}–${clock(a.stop.end)}`
+              : "Ожидает распределения"}
+          </span>
+        </div>
+        <div>
+          <small>Работа / дорога</small>
+          <b>
+            {j.duration} / {a?.stop.travel ?? "—"} мин
+          </b>
+          <span>{workNames[info.workType]}</span>
+        </div>
+        {role === "dispatcher" && !isLocked && status !== "cancelled" && (
+          <div>
+            <small>Предлагаемая корректировка</small>
+            <b>{w.data.engineers.find((e) => e.id === engineer)?.name}</b>
+            <span>
+              {start}–{start ? clock(minutes(start) + j.duration) : "—"} ·
+              других заявок:{" "}
+              {w.current?.routes
+                .find((r) => r.engineerId === engineer)
+                ?.stops.filter((s) => s.jobId !== id).length ?? 0}
+            </span>
+          </div>
+        )}
+      </section>
       {a && (
         <div className="itinerary">
           <div>
@@ -232,8 +268,6 @@ export default function TicketDetail({
                 onChange={(e) => {
                   const v = e.target.value as Status;
                   setNextStatus(v);
-                  if (v === "review" || v === "completed") setProgress(100);
-                  if (v === "new" || v === "assigned") setProgress(0);
                 }}
                 disabled={status === "completed" || status === "cancelled"}
               >
@@ -259,28 +293,6 @@ export default function TicketDetail({
                 )}
               </select>
             </label>
-            <label>
-              Выполнение заявки
-              <select
-                aria-label="Выполнение заявки"
-                value={progress}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setProgress(v);
-                  if (v === 100) setNextStatus("review");
-                  else if (v > 0) setNextStatus("in_progress");
-                }}
-                disabled={
-                  !a || status === "completed" || status === "cancelled"
-                }
-              >
-                {[0, 25, 50, 75, 100].map((v) => (
-                  <option key={v} value={v}>
-                    {v}%
-                  </option>
-                ))}
-              </select>
-            </label>
             <label className="span-2">
               Комментарий по заявке
               <textarea
@@ -293,9 +305,7 @@ export default function TicketDetail({
           </div>
           <div className="actions">
             <button
-              onClick={() =>
-                perform(() => onStatus(nextStatus, progress, note))
-              }
+              onClick={() => perform(() => onStatus(nextStatus, note))}
               disabled={status === "completed" || status === "cancelled"}
             >
               <CheckCircle2 size={16} />

@@ -4,13 +4,11 @@ import {
   CalendarDays,
   WandSparkles,
   AlertCircle,
-  LockKeyhole,
   ArrowRight,
   Zap,
 } from "lucide-react";
 import type { Workspace } from "../domain/workspace";
-import { locked } from "../domain/workspace";
-import { clock } from "../api";
+import TeamTimeline from "../components/TeamTimeline";
 import MapView from "../MapView";
 import { Empty, Metric, fmt } from "../components/ui";
 export default function Planning({
@@ -42,7 +40,7 @@ export default function Planning({
           </button>
           <button className="primary" onClick={onPlan}>
             <WandSparkles size={16} />
-            {plan ? "Пересчитать план" : "Построить план"}
+            Распределить все заявки
           </button>
         </div>
       </div>
@@ -70,8 +68,8 @@ export default function Planning({
           <div>
             <strong>Требуют внимания: {plan.unassigned.length}</strong>
             <p>
-              Исправьте условия в карточке заявки, затем назначьте специалиста поддержки.
-              Остальное расписание пересчитается.
+              Исправьте условия в карточке заявки, затем назначьте специалиста
+              поддержки. Остальное расписание пересчитается.
             </p>
             <div className="actions">
               {plan.unassigned.map((u) => (
@@ -128,66 +126,7 @@ export default function Planning({
             клиентов и смены.
           </Empty>
         ) : (
-          <div className="schedule">
-            {plan.routes
-              .filter((r) => !engineer || r.engineerId === engineer)
-              .map((r) => {
-                const e = w.data.engineers.find((e) => e.id === r.engineerId)!;
-                return (
-                  <div className="schedule-row" key={e.id}>
-                    <div className="engineer-heading">
-                      <span className="avatar" style={{ background: e.color }}>
-                        {e.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </span>
-                      <div>
-                        <b>{e.name}</b>
-                        <small>
-                          {e.shift.join("–")} · {r.stops.length} заявок ·{" "}
-                          {fmt(r.km)} км
-                        </small>
-                      </div>
-                    </div>
-                    <div className="schedule-stops">
-                      {r.stops.length ? (
-                        r.stops.map((s, index) => {
-                          const j = w.data.jobs.find((j) => j.id === s.jobId)!;
-                          return (
-                            <button
-                              className={`stop-card ${w.manual[j.id] ? "fixed" : ""}`}
-                              key={j.id}
-                              onClick={() => onSelect(j.id)}
-                              style={{ borderLeftColor: e.color }}
-                            >
-                              <span className="stop-time">
-                                {clock(s.start)} — {clock(s.end)}
-                                {(w.manual[j.id] ||
-                                  locked(w.tickets[j.id].status)) && (
-                                  <LockKeyhole size={12} />
-                                )}
-                              </span>
-                              <b>{j.title}</b>
-                              <small>
-                                № {j.id} · {s.travel} мин в пути
-                              </small>
-                              <span className="stop-number">{index + 1}</span>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <span className="muted">Свободная смена</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            <p className="schedule-help">
-              Нажмите на работу, чтобы изменить исполнителя или начало. Значок
-              замка — фиксированное назначение.
-            </p>
-          </div>
+          <TeamTimeline w={w} engineerId={engineer} onSelect={onSelect} />
         )}
       </section>
       <p className="footnote">

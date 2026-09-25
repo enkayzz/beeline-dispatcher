@@ -192,7 +192,7 @@ test("support intake, dispatcher planning, manual correction, progress and persi
   await page
     .getByRole("button", { name: "Маршруты и расписание", exact: true })
     .click();
-  await page.getByRole("button", { name: "Построить план" }).click();
+  await page.getByRole("button", { name: "Распределить все заявки" }).click();
   await expect(page.getByText("План готов.", { exact: false })).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("schedule-desktop.png"),
@@ -244,15 +244,15 @@ test("support intake, dispatcher planning, manual correction, progress and persi
     .fill("Тестовое подключение");
   await page.getByRole("button", { name: /Открыть заявку REQ-/ }).click();
   await page
-    .getByLabel("Выполнение заявки", { exact: true })
-    .selectOption("50");
+    .getByRole("combobox", { name: "Статус заявки", exact: true })
+    .selectOption("in_progress");
   await page.getByRole("button", { name: "Сохранить статус" }).click();
   await expect(
     page.getByRole("dialog").getByText("В работе", { exact: true }).first(),
   ).toBeVisible();
   await page
-    .getByLabel("Выполнение заявки", { exact: true })
-    .selectOption("100");
+    .getByRole("combobox", { name: "Статус заявки", exact: true })
+    .selectOption("review");
   await page.getByRole("button", { name: "Сохранить статус" }).click();
   await expect(
     page.getByText("Готовность передана диспетчеру", { exact: false }),
@@ -342,7 +342,7 @@ test("support ownership, rejected manual edits and import confirmation", async (
   await page
     .getByRole("button", { name: "Маршруты и расписание", exact: true })
     .click();
-  await page.getByRole("button", { name: "Построить план" }).click();
+  await page.getByRole("button", { name: "Распределить все заявки" }).click();
   await page.getByRole("button", { name: "№ 74202", exact: true }).click();
   await page.getByRole("button", { name: "Назначить и пересчитать" }).click();
   await expect(page.getByRole("dialog").getByRole("alert")).toContainText(

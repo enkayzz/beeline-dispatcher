@@ -31,6 +31,7 @@ import {
   locked,
   STORAGE_KEY,
   ticketStatus,
+  statusNames,
   type Assignment,
   type Role,
   type Status,
@@ -38,6 +39,7 @@ import {
   type Workspace,
 } from "./domain/workspace";
 import { recalculate } from "./domain/planner";
+import { demoSnapshot, demoTimes, type DemoPeriod } from "./domain/demoStates";
 import Requests from "./pages/Requests";
 import Planning from "./pages/Planning";
 import Efficiency from "./pages/Efficiency";
@@ -62,6 +64,16 @@ export default function App() {
   const [confirm, setConfirm] = useState<"reset" | "import" | null>(null),
     [pending, setPending] = useState<Workspace>();
   const [help, setHelp] = useState(false);
+  const [demoPeriod, setDemoPeriod] = useState<DemoPeriod>();
+  const [liveWorkspace, setLiveWorkspace] = useState<Workspace>();
+  function showDemo(period: DemoPeriod) {
+    if (!demoPeriod) setLiveWorkspace(w);
+    setDemoPeriod(period);
+    setW(demoSnapshot(period));
+    setSelected(undefined);
+    setNotice("");
+    setError("");
+  }
   const currentEngineerId = supportId(w);
   const ownJobs = personalJobs(w);
   function selectDate(date: string) {
@@ -75,6 +87,7 @@ export default function App() {
     });
   }
   useEffect(() => {
+    if (demoPeriod) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(w));
     } catch {
@@ -82,7 +95,7 @@ export default function App() {
         "Не удалось сохранить данные в браузере. Экспортируйте рабочий план.",
       );
     }
-  }, [w]);
+  }, [w, demoPeriod]);
   function commit(next: Workspace, message: string) {
     setW(next);
     setError("");
@@ -279,7 +292,7 @@ export default function App() {
     audit(result, role, "Ручная фиксация снята", selected);
     commit(result, "Заявка возвращена в автоматическое планирование.");
   }
-  function changeStatus(status: Status, progress: number, note: string) {
+  function changeStatus(status: Status, note: string) {
     if (!selected) return;
     if (
       role === "support" &&
@@ -326,20 +339,11 @@ export default function App() {
       throw new Error("Фактический статус нельзя вернуть назад.");
     if (status === "cancelled" && !note.trim())
       throw new Error("Укажите причину отмены в комментарии.");
-    if ((status === "completed" || status === "review") && progress !== 100)
-      throw new Error("Для завершённой работы укажите 100%.");
-    if (
-      (status === "new" || status === "assigned" || status === "enroute") &&
-      progress > 0
-    )
-      throw new Error("Для ненулевого выполнения выберите «В работе».");
-    if (status === "in_progress" && (progress <= 0 || progress >= 100))
-      throw new Error("Для работы в процессе выберите от 25% до 75%.");
     const next = structuredClone(w);
     next.tickets[selected] = {
       ...next.tickets[selected],
       status,
-      progress: status === "cancelled" ? 0 : progress,
+      progress: status === "completed" || status === "review" ? 100 : 0,
       note,
       lastAssignment:
         assignmentFor(w.current, selected) ??
@@ -356,7 +360,7 @@ export default function App() {
         ? "Диспетчер подтвердил выполнение"
         : status === "cancelled"
           ? `Заявка отменена: ${note}`
-          : `Обновлён статус, выполнено ${progress}%`,
+          : `Статус: ${statusNames[status]}`,
       selected,
     );
     commit(
@@ -534,20 +538,38 @@ export default function App() {
             />
           </label>
           <span>Заявки, расписание и показатели за выбранный день</span>
-          <select
-            aria-label="Сохранённые дни"
-            value={w.data.date}
-            onChange={(e) => selectDate(e.target.value)}
-          >
-            {[...new Set([w.data.date, ...Object.keys(w.days ?? {})])]
-              .sort()
-              .map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-          </select>
+          <div className="demo-switch" aria-label="Демонстрация рабочего дня">
+            <span>Демо</span>
+            {(["morning", "day", "evening"] as DemoPeriod[]).map((period) => (
+              <button
+                key={period}
+                aria-pressed={demoPeriod === period}
+                onClick={() => showDemo(period)}
+              >
+                {demoTimes[period].label}
+              </button>
+            ))}
+            {demoPeriod && (
+              <button
+                onClick={() => {
+                  if (liveWorkspace) setW(liveWorkspace);
+                  setDemoPeriod(undefined);
+                  setSelected(undefined);
+                  setNotice("");
+                }}
+              >
+                Выйти из демо
+              </button>
+            )}
+          </div>
         </div>
+        {demoPeriod && (
+          <div className="demo-caption">
+            Демонстрация · {demoTimes[demoPeriod].time} ·{" "}
+            {demoTimes[demoPeriod].hint}. Изменения в демо не затрагивают ваши
+            данные.
+          </div>
+        )}
         {error && (
           <div className="banner critical" role="alert">
             {error}
@@ -579,6 +601,7 @@ export default function App() {
             workspace={w}
             role={role}
             onSelect={setSelected}
+            onPlan={() => run(plan)}
             onCreate={() => setEditor("new")}
           />
         )}

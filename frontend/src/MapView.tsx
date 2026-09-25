@@ -83,6 +83,16 @@ export default function MapView({
     for (const j of data.jobs) {
       const assigned = routeByJob.get(j.id),
         e = data.engineers.find((e) => e.id === assigned?.r.engineerId);
+      const emergency = j.skill === "emergency";
+      if (emergency)
+        L.circleMarker(j.point, {
+          radius: 25,
+          color: "#c52828",
+          weight: 2,
+          fillColor: "#ffdddd",
+          fillOpacity: 0.3,
+          interactive: false,
+        }).addTo(l);
       const selected = j.id === selectedId,
         muted = !!engineerId && e?.id !== engineerId;
       const color = plan && !assigned ? "#d88d30" : (e?.color ?? "#283c48");
@@ -91,13 +101,13 @@ export default function MapView({
         zIndexOffset: selected ? 1000 : 100,
         icon: L.divIcon({
           className: "",
-          html: `<div class="map-pin ${selected ? "selected" : ""} ${j.priority === "urgent" ? "urgent" : ""}" style="--pin:${color}">${plan && !assigned ? "!" : assigned ? assigned.i + 1 : "•"}</div>`,
+          html: `<div class="map-pin ${selected ? "selected" : ""} ${emergency ? "emergency-pin" : j.priority === "urgent" ? "urgent" : ""}" style="--pin:${color}">${plan && !assigned ? "!" : assigned ? assigned.i + 1 : "•"}</div>`,
           iconSize: [32, 32],
           iconAnchor: [16, 16],
         }),
       }).addTo(l);
       const tooltip = document.createElement("span");
-      tooltip.textContent = `№ ${j.id} · ${j.title}`;
+      tooltip.textContent = `${emergency ? "Авария · " : ""}№ ${j.id} · ${j.title}`;
       pin
         .bindTooltip(tooltip, { direction: "top" })
         .on("click", () => onSelect(j.id));
@@ -132,6 +142,7 @@ export default function MapView({
       />
       <div className="map-label">
         <MapIcon size={15} />
+        <span className="map-emergency-legend">◉ Авария</span>
         <span>
           Москва <b>·</b> рабочие маршруты
         </span>

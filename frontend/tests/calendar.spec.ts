@@ -101,7 +101,7 @@ test("menu, board and calendar agree across weeks, completion, empty dates and r
   await expect(page.getByLabel("Рабочая дата", { exact: true })).toHaveValue(
     "2026-08-31",
   );
-  await page.getByLabel("Сохранённые дни").selectOption(originalDate);
+  await page.getByLabel("Рабочая дата").fill(originalDate);
   await expect(page.locator(".kanban-card")).toHaveCount(own.length);
   await expect(page.locator(".stage-closed .kanban-card")).toHaveCount(1);
   await page
@@ -167,7 +167,7 @@ test("schedule edits recalculate saved future dates and revoked permission survi
     .click();
   await page.getByRole("checkbox", { name: /Разрешить поддержке/ }).uncheck();
   await page.getByRole("button", { name: "Сохранить и пересчитать" }).click();
-  await page.getByLabel("Сохранённые дни").selectOption("2026-08-17");
+  await page.getByLabel("Рабочая дата").fill("2026-08-17");
   await page.getByLabel("Рабочее место").selectOption("support");
   await page
     .getByRole("button", { name: "Моё расписание", exact: true })

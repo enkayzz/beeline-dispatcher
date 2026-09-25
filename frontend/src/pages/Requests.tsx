@@ -53,11 +53,13 @@ export default function Requests({
   role,
   onSelect,
   onCreate,
+  onPlan,
 }: {
   workspace: Workspace;
   role: Role;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  onPlan: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
@@ -99,9 +101,16 @@ export default function Requests({
             изменения фактического статуса.
           </p>
         </div>
-        <button className="primary" onClick={onCreate}>
-          <Plus size={16} /> Создать заявку
-        </button>
+        <div className="actions">
+          {role === "dispatcher" && (
+            <button className="primary" onClick={onPlan}>
+              Распределить все заявки
+            </button>
+          )}
+          <button onClick={onCreate}>
+            <Plus size={16} /> Создать заявку
+          </button>
+        </div>
       </div>
 
       <section className="card day-summary compact-summary">
@@ -252,7 +261,7 @@ export default function Requests({
                       )?.reason;
                       return (
                         <button
-                          className="kanban-card"
+                          className={`kanban-card ${info.workType === "emergency" ? "emergency-card" : ""}`}
                           key={job.id}
                           aria-label={`Открыть заявку ${job.id}`}
                           onClick={() => onSelect(job.id)}
@@ -261,7 +270,12 @@ export default function Requests({
                             <span>№ {job.id}</span>
                             <Badge status={ticketStatus(w, job)} />
                           </div>
-                          <h3>{job.title}</h3>
+                          <h3>
+                            {info.workType === "emergency" && (
+                              <span className="emergency-label">Авария · </span>
+                            )}
+                            {job.title}
+                          </h3>
                           <p>
                             <MapPin size={13} /> {job.address}
                           </p>
